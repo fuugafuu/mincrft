@@ -1,9 +1,21 @@
 body {
   margin: 0;
   overflow: hidden;
+  font-family: sans-serif;
 }
 #container {
-  width: 100vw;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 70vw;
   height: 100vh;
-  display: block;
+}
+#editorContainer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 30vw;
+  height: 100vh;
+  background-color: #1e1e1e;
+  overflow: auto;
 }
