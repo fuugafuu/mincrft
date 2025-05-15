@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>Three.js 3D Cube</title>
+  <title>簡単Minecraft風3Dブロック</title>
   <style>
     body { margin: 0; overflow: hidden; }
     #container { width: 100vw; height: 100vh; display: block; }
@@ -17,32 +17,85 @@
   <script>
     const container = document.getElementById('container');
 
+    // シーンとカメラ作成
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb); // 空っぽく青色に
+
     const camera = new THREE.PerspectiveCamera(
-      75, window.innerWidth / window.innerHeight, 0.1, 1000
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
     );
-    const renderer = new THREE.WebGLRenderer();
+    camera.position.set(5, 5, 10);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
 
-    // ブロック（立方体）作成
-    const geometry = new THREE.BoxGeometry();
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const cube = new THREE.Mesh(geometry, material);
-    scene.add(cube);
+    // 簡単なライトを追加
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(10, 10, 10);
+    scene.add(directionalLight);
 
-    camera.position.z = 5;
+    // ブロックのマテリアル（Minecraft風に簡単に）
+    const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x00cc00 }); // 草色
+    const dirtMaterial = new THREE.MeshLambertMaterial({ color: 0x885522 }); // 土色
 
-    function animate() {
-      requestAnimationFrame(animate);
-      cube.rotation.x += 0.01;
-      cube.rotation.y += 0.01;
-      renderer.render(scene, camera);
+    const blockSize = 1;
+
+    // 簡単な地面を作る（5x5のブロック）
+    for (let x = -2; x <= 2; x++) {
+      for (let z = -2; z <= 2; z++) {
+        const geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+        // 草のブロックの上に土のブロックを積むように2段重ね
+        const grassBlock = new THREE.Mesh(geometry, grassMaterial);
+        grassBlock.position.set(x, 0, z);
+        scene.add(grassBlock);
+
+        const dirtBlock = new THREE.Mesh(geometry, dirtMaterial);
+        dirtBlock.position.set(x, -1, z);
+        scene.add(dirtBlock);
+      }
     }
 
+    // シンプルな操作（マウスで回せる）
+    let isDragging = false;
+    let previousMousePosition = { x: 0, y: 0 };
+
+    container.addEventListener('mousedown', e => {
+      isDragging = true;
+      previousMousePosition = { x: e.clientX, y: e.clientY };
+    });
+
+    container.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    container.addEventListener('mousemove', e => {
+      if (isDragging) {
+        const deltaX = e.clientX - previousMousePosition.x;
+        const deltaY = e.clientY - previousMousePosition.y;
+
+        const rotationSpeed = 0.005;
+        scene.rotation.y += deltaX * rotationSpeed;
+        scene.rotation.x += deltaY * rotationSpeed;
+
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      }
+    });
+
+    // アニメーションループ
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
     animate();
 
-    // 画面リサイズ対応
+    // ウィンドウリサイズ対応
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
