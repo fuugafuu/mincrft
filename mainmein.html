@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>簡単Minecraft風3Dブロック</title>
+  <title>Minecraft風 3D＋キャラ＋ブロック設置</title>
   <style>
     body { margin: 0; overflow: hidden; }
     #container { width: 100vw; height: 100vh; display: block; }
@@ -11,16 +11,16 @@
 <body>
   <div id="container"></div>
 
-  <!-- Three.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 
   <script>
     const container = document.getElementById('container');
 
-    // シーンとカメラ作成
+    // シーン作成
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb); // 空っぽく青色に
+    scene.background = new THREE.Color(0x87ceeb);
 
+    // カメラ作成
     const camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
@@ -30,43 +30,71 @@
     camera.position.set(5, 5, 10);
     camera.lookAt(0, 0, 0);
 
+    // レンダラー作成
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
 
-    // 簡単なライトを追加
+    // ライト
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(10, 10, 10);
     scene.add(directionalLight);
 
-    // ブロックのマテリアル（Minecraft風に簡単に）
-    const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x00cc00 }); // 草色
-    const dirtMaterial = new THREE.MeshLambertMaterial({ color: 0x885522 }); // 土色
+    // マテリアル
+    const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x00cc00 });
+    const dirtMaterial = new THREE.MeshLambertMaterial({ color: 0x885522 });
 
     const blockSize = 1;
 
-    // 簡単な地面を作る（5x5のブロック）
+    // 地面作成（5x5）
     for (let x = -2; x <= 2; x++) {
       for (let z = -2; z <= 2; z++) {
         const geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
-        // 草のブロックの上に土のブロックを積むように2段重ね
-        const grassBlock = new THREE.Mesh(geometry, grassMaterial);
-        grassBlock.position.set(x, 0, z);
-        scene.add(grassBlock);
 
         const dirtBlock = new THREE.Mesh(geometry, dirtMaterial);
         dirtBlock.position.set(x, -1, z);
         scene.add(dirtBlock);
+
+        const grassBlock = new THREE.Mesh(geometry, grassMaterial);
+        grassBlock.position.set(x, 0, z);
+        grassBlock.userData.isGround = true; // 地面フラグ
+        scene.add(grassBlock);
       }
     }
 
-    // シンプルな操作（マウスで回せる）
+    // キャラクター追加
+    const charGeometry = new THREE.BoxGeometry(0.8, 1.8, 0.8);
+    const charMaterial = new THREE.MeshLambertMaterial({ color: 0x0000ff });
+    const character = new THREE.Mesh(charGeometry, charMaterial);
+    character.position.set(0, 0.9, 0);
+    scene.add(character);
+
+    // キャラ移動用キーボードイベント
+    window.addEventListener('keydown', (e) => {
+      const step = 0.3;
+      switch (e.key.toLowerCase()) {
+        case 'w':
+          character.position.z -= step;
+          break;
+        case 's':
+          character.position.z += step;
+          break;
+        case 'a':
+          character.position.x -= step;
+          break;
+        case 'd':
+          character.position.x += step;
+          break;
+      }
+    });
+
+    // マウスドラッグで視点回転
     let isDragging = false;
     let previousMousePosition = { x: 0, y: 0 };
 
-    container.addEventListener('mousedown', e => {
+    container.addEventListener('mousedown', (e) => {
       isDragging = true;
       previousMousePosition = { x: e.clientX, y: e.clientY };
     });
@@ -75,7 +103,7 @@
       isDragging = false;
     });
 
-    container.addEventListener('mousemove', e => {
+    container.addEventListener('mousemove', (e) => {
       if (isDragging) {
         const deltaX = e.clientX - previousMousePosition.x;
         const deltaY = e.clientY - previousMousePosition.y;
@@ -88,6 +116,38 @@
       }
     });
 
+    // レイキャスターとマウス座標
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    // クリックでブロック設置
+    window.addEventListener('click', (event) => {
+      // マウス座標を正規化
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+
+      // 地面ブロックだけを対象に
+      const groundBlocks = scene.children.filter(obj => obj.userData.isGround);
+      const intersects = raycaster.intersectObjects(groundBlocks);
+
+      if (intersects.length > 0) {
+        const point = intersects[0].point;
+        const blockPos = new THREE.Vector3(
+          Math.floor(point.x + 0.5),
+          1, // 地面の上に置くから高さ1
+          Math.floor(point.z + 0.5)
+        );
+
+        // 新しい草ブロックを作成して追加
+        const geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+        const newBlock = new THREE.Mesh(geometry, grassMaterial);
+        newBlock.position.copy(blockPos);
+        scene.add(newBlock);
+      }
+    });
+
     // アニメーションループ
     function animate() {
       requestAnimationFrame(animate);
@@ -95,7 +155,7 @@
     }
     animate();
 
-    // ウィンドウリサイズ対応
+    // リサイズ対応
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
